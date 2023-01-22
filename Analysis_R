@@ -1,0 +1,127 @@
+## load packages
+
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(readr)
+library(dplyr)
+library(hms)
+library(data.table)
+
+#------------------------------------------------------#
+
+## Loading csv files from Jan 2022 to Dec 2022
+
+jan01_df <- read_csv("202201-divvy-tripdata.csv") 
+feb02_df <- read_csv("202202-divvy-tripdata.csv")
+mar03_df <- read_csv("202203-divvy-tripdata.csv") 
+apr04_df <- read_csv("202204-divvy-tripdata.csv") 
+may05_df <- read_csv("202205-divvy-tripdata.csv") 
+jun06_df <- read_csv("202206-divvy-tripdata.csv") 
+jul07_df <- read_csv("202207-divvy-tripdata.csv") 
+aug08_df <- read_csv("202208-divvy-tripdata.csv") 
+sep09_df <- read_csv("202209-divvy-publictripdata.csv")
+oct10_df <- read_csv("202210-divvy-tripdata.csv") 
+nov11_df <- read_csv("202211-divvy-tripdata.csv") 
+dec12_df <- read_csv("202212-divvy-tripdata.csv")
+
+#------------------------------------------------------#
+
+## merging all the data frames into one to view whole year data together
+
+bikeshare_df <- rbind(jan01_df,feb02_df,mar03_df,apr04_df,may05_df,jun06_df,jul07_df,aug08_df,sep09_df,oct10_df,nov11_df,dec12_df)
+
+
+#-------------------------------------------------------#
+
+## removing the every month data frames as to clean up the space
+
+remove(jan01_df,feb02_df,mar03_df,apr04_df,may05_df,jun06_df,jul07_df,aug08_df,sep09_df,oct10_df,nov11_df,dec12_df)
+
+
+#------------------------------------------------------#
+
+## Creating new data frame so that to add new columns
+
+bikeshare_data <- bikeshare_df
+
+#------------------------------------------------------#
+
+#Adding new columns 
+
+# ride_length 
+bikeshare_data$ride_length <- (bikeshare_data$ended_at - bikeshare_data$started_at)
+bikeshare_data$ride_length <- as_hms(bikeshare_data$ride_length)
+
+# week of the day
+bikeshare_data$day_of_week <- wday(bikeshare_data$started_at)  
+
+# format date as YYYY-MM-DD HH:MM:SS
+bikeshare_data$date <- as.Date(bikeshare_data$started_at)
+
+# Format date seprately
+
+bikeshare_data$year <- format(as.Date(bikeshare_data$date),"%y") # year Column
+bikeshare_data$month <- format(as.Date(bikeshare_data$date),"%m") # Month Column
+bikeshare_data$day <- format(as.Date(bikeshare_data$date),"%d") # day Column
+
+
+bikeshare_data$time <- format(as.Date(bikeshare_data$date),"%H:%M:%S") # format time as HH:MM:SS
+bikeshare_data$time <- as_hms(bikeshare_data$started_at)
+# bikeshare_data$hour <- hour(bikeshare_data$time)
+
+bikeshare_data <- bikeshare_data %>% 
+  mutate(day_of_week =
+           case_when(day_of_week == "1" ~ "Sunday",
+                     day_of_week == "2" ~ "Monday",
+                     day_of_week == "3" ~ "Tuesday",
+                     day_of_week == "4" ~ "Wednesday",
+                     day_of_week == "5" ~ "Thursday",
+                     day_of_week == "6" ~ "Friday",
+                     day_of_week == "7" ~ "Saturday")
+  )
+
+bikeshare_data <- bikeshare_data %>% 
+  mutate(month =
+           case_when(month == "01" ~ "January",
+                     month == "02" ~ "February",
+                     month == "03" ~ "March",
+                     month == "04" ~ "April",
+                     month == "05" ~ "May",
+                     month == "06" ~ "June",
+                     month == "07" ~ "July",
+                     month == "08" ~ "August",
+                     month == "09" ~ "September",
+                     month == "10" ~ "October",
+                     month == "11" ~ "November",
+                     month == "12" ~ "December")
+  )
+
+
+#-------------------------------------------------------------------------#
+## Cleaning Data
+
+bikeshare_data <- na.omit(bikeshare_data)  # remove NA values in rows 
+bikeshare_data <- distinct(bikeshare_data) # remove duplicates
+bikeshare_data <- bikeshare_data[bikeshare_data$ride_length >=0,] # remove negative values
+bikeshare_data <- bikeshare_data[bikeshare_data$ride_length !=0,] # remove 0 values
+
+# Remove Column
+
+bikeshare_data <- bikeshare_data %>%
+  select(-c(start_station_id,end_station_id,start_lat,start_lng,end_lat,end_lng))
+
+#--------------------------------------------------------------------------#
+## Create new data frame for visualization
+
+bikeshare_final <- bikeshare_data
+
+#------------------------------------------------------#
+## Remove some more columns from final data set
+
+bikeshare_final <-bikeshare_final %>%
+  select(-c(ride_id,started_at,start_station_name,ended_at,end_station_name,time))
+
+# export to csv file
+
+fwrite(bikeshare_final,"final_data.csv")
